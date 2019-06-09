@@ -192,7 +192,7 @@ fn compile<'a, A: Copy>(l: Formula<A>, mx: Option<A>) -> Result<'a, A> {
         LTL::Until(p, q) => match mx {
             None => compile(Rc::clone(q), mx),
             Some(_) => compile(
-                or(Rc::clone(q), and(Rc::clone(p), l)),
+                or(Rc::clone(q), and(Rc::clone(p), next(l))),
                 mx,
             ),
         },
@@ -200,7 +200,7 @@ fn compile<'a, A: Copy>(l: Formula<A>, mx: Option<A>) -> Result<'a, A> {
         LTL::Release(p, q) => match mx {
             None => compile(Rc::clone(q), mx),
             Some(_) => compile(
-                and(Rc::clone(q), and(Rc::clone(p), l)),
+                and(Rc::clone(q), and(Rc::clone(p), next(l))),
                 mx,
             ),
         },
