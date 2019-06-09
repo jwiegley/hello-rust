@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 
 mod ltl;
-use ltl::Result;
+use ltl::*;
 
 mod rules;
 
@@ -31,4 +31,38 @@ fn main() {
             x => st = x
         }
     }
+}
+
+#[test]
+fn speed_test() {
+    fn odd(x: u64) -> bool {
+        x % 2 == 1
+    }
+    fn even(x: u64) -> bool {
+        x % 2 == 0
+    }
+
+    let formula1 = always(or(is(&odd), and(is(&even), next(is(&odd)))));
+    let formula2 = always(until(is(&odd), is(&even)));
+
+    fn run_it(f: Formula<u64>, n: u64) -> Result<'static, u64> {
+        let mut s = Result::Continue(f);
+        for i in 1..n {
+            s = ltl::step(s, i)
+        };
+        s
+    }
+
+    fn gr_it(n: u64) -> bool {
+        for i in 1..n {
+            if ! (i>0) {
+                return false
+            }
+        }
+        return true
+    }
+
+    gr_it(1000000);
+    run_it(formula1, 1000000);
+    run_it(formula2, 1000000);
 }

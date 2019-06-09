@@ -72,6 +72,30 @@ pub fn always<A>(p: Formula<A>) -> Formula<A> {
     release(bottom("always".to_string()), p)
 }
 
+/// True if the given Haskell boolean is true.
+#[allow(dead_code)]
+pub fn truth<A>(b: bool) -> Formula<A> {
+    if b { top() } else { bottom("truth".to_string()) }
+}
+
+/// True if the given predicate on the input is true.
+#[allow(dead_code)]
+pub fn is<A: 'static, T>(f: &'static T) -> Formula<A> where T: Fn(A) -> bool {
+    accept(Box::new(move |x: A| truth(f(x))))
+}
+
+/// Another name for 'is'.
+#[allow(dead_code)]
+pub fn test<A: 'static, T>(f: &'static T) -> Formula<A> where T: Fn(A) -> bool {
+    is(f)
+}
+
+/// Check for equality with the input.
+#[allow(dead_code)]
+pub fn eq<A: 'static + PartialEq>(x: A) -> Formula<A> {
+    accept(Box::new(move |y| truth(x == y)))
+}
+
 impl<A> fmt::Display for LTL<A> {
     fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
         match self {
