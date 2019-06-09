@@ -14,14 +14,14 @@ fn parse_time(text: &str) -> Option<DateTime<FixedOffset>> {
     DateTime::parse_from_str(&caps[1], "%F %T.%q").ok()
 }
 
-fn transactions_always_handled(text: &str) -> Formula {
+fn transactions_always_handled(text: &str) -> Formula<&str> {
     let re: Regex = Regex::new("node-0:.*?node/restapi: submitted tx: ([0-9a-f]{64})").unwrap();
     if let Some(begin) = parse_time(text) {
         if let Some(caps) = re.captures(text) {
             fn look_for_handled(
                 begin: DateTime<FixedOffset>,
                 tx: String,
-            ) -> Box<dyn Fn(&str) -> Formula> {
+            ) -> Box<dyn Fn(&str) -> Formula<&str>> {
                 Box::new(move |text: &str| {
                     if let Some(now) = parse_time(text) {
                         if now.signed_duration_since(begin) > Duration::seconds(30) {
@@ -55,7 +55,7 @@ fn transactions_always_handled(text: &str) -> Formula {
     }
 }
 
-fn transactions_always_valid(text: &str) -> Formula {
+fn transactions_always_valid(text: &str) -> Formula<&str> {
     // lazy_static! {
     // static ref RE: Regex = Regex::new("^foo$").unwrap();
     // }
@@ -67,7 +67,7 @@ fn transactions_always_valid(text: &str) -> Formula {
     }
 }
 
-fn confirm_round_finalization(text: &str) -> Formula {
+fn confirm_round_finalization(text: &str) -> Formula<&str> {
     let re: Regex =
         Regex::new("node-([0-9]+):.*?consensus: starting new round: ([0-9]+),").unwrap();
     if let Some(begin) = parse_time(text) {
@@ -76,7 +76,7 @@ fn confirm_round_finalization(text: &str) -> Formula {
                 begin: DateTime<FixedOffset>,
                 node: String,
                 rnd: String,
-            ) -> Box<dyn Fn(&str) -> Formula> {
+            ) -> Box<dyn Fn(&str) -> Formula<&str>> {
                 Box::new(move |text: &str| {
                     if let Some(now) = parse_time(text) {
                         if now.signed_duration_since(begin) > Duration::seconds(60) {
@@ -115,7 +115,7 @@ fn confirm_round_finalization(text: &str) -> Formula {
     }
 }
 
-pub fn analysis_rules() -> Formula {
+pub fn analysis_rules<'a>() -> Formula<&'a str> {
     and(
         with(&transactions_always_handled),
         and(

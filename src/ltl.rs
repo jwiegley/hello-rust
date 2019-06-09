@@ -2,77 +2,77 @@ use std::fmt;
 use std::rc::Rc;
 
 #[allow(dead_code)]
-pub enum LTL {
+pub enum LTL<A> {
     Top,
     Bottom(String),
 
-    // Accept rules take a state which is global to the aggregate LTL formula.
+    // Accept rules take a state which is global to the aggregate LTL<A> formula.
     // There is no way to "scope" information using closures, such as there is
     // in Coq or Haskell, so intermediate states must be represented the
     // old-fashioned way.
-    Accept(Box<dyn Fn(&str) -> Rc<LTL>>),
+    Accept(Box<dyn Fn(A) -> Rc<LTL<A>>>),
 
-    And(Rc<LTL>, Rc<LTL>),
-    Or(Rc<LTL>, Rc<LTL>),
+    And(Rc<LTL<A>>, Rc<LTL<A>>),
+    Or(Rc<LTL<A>>, Rc<LTL<A>>),
 
-    Next(Rc<LTL>),
+    Next(Rc<LTL<A>>),
 
-    Until(Rc<LTL>, Rc<LTL>),
-    Release(Rc<LTL>, Rc<LTL>),
+    Until(Rc<LTL<A>>, Rc<LTL<A>>),
+    Release(Rc<LTL<A>>, Rc<LTL<A>>),
 }
 
-pub type Formula = Rc<LTL>;
+pub type Formula<A> = Rc<LTL<A>>;
 
-pub fn top() -> Formula {
+pub fn top<A>() -> Formula<A> {
     Rc::new(LTL::Top)
 }
 
-pub fn bottom(reason: String) -> Formula {
+pub fn bottom<A>(reason: String) -> Formula<A> {
     Rc::new(LTL::Bottom(reason))
 }
 
-pub fn accept(f: Box<dyn Fn(&str) -> Rc<LTL>>) -> Formula {
+pub fn accept<A>(f: Box<dyn Fn(A) -> Rc<LTL<A>>>) -> Formula<A> {
     Rc::new(LTL::Accept(f))
 }
 
-pub fn with<T>(f: &'static T) -> Formula where T: Fn(&str) -> Formula {
+pub fn with<A, T>(f: &'static T) -> Formula<A> where T: Fn(A) -> Formula<A> {
     accept(Box::new(f))
 }
 
-pub fn and(p: Formula, q: Formula) -> Formula {
+pub fn and<A>(p: Formula<A>, q: Formula<A>) -> Formula<A> {
     Rc::new(LTL::And(p, q))
 }
 
-pub fn or(p: Formula, q: Formula) -> Formula {
+pub fn or<A>(p: Formula<A>, q: Formula<A>) -> Formula<A> {
     Rc::new(LTL::Or(p, q))
 }
 
 #[allow(dead_code)]
-pub fn next(p: Formula) -> Formula {
+pub fn next<A>(p: Formula<A>) -> Formula<A> {
     Rc::new(LTL::Next(p))
 }
 
 #[allow(dead_code)]
-pub fn until(p: Formula, q: Formula) -> Formula {
+pub fn until<A>(p: Formula<A>, q: Formula<A>) -> Formula<A> {
     Rc::new(LTL::Until(p, q))
 }
 
 #[allow(dead_code)]
-pub fn release(p: Formula, q: Formula) -> Formula {
+pub fn release<A>(p: Formula<A>, q: Formula<A>) -> Formula<A> {
     Rc::new(LTL::Release(p, q))
 }
 
 #[allow(dead_code)]
-pub fn eventually(p: Formula) -> Formula {
+pub fn eventually<A>(p: Formula<A>) -> Formula<A> {
     until(top(), p)
 }
 
 #[allow(dead_code)]
-pub fn always(p: Formula) -> Formula {
+pub fn always<A>(p: Formula<A>) -> Formula<A> {
     release(bottom("always".to_string()), p)
 }
 
-impl fmt::Display for LTL {
+impl<A> fmt::Display for LTL<A> {
     fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
         match self {
             LTL::Top => write!(dest, "Top"),
@@ -89,16 +89,16 @@ impl fmt::Display for LTL {
 
 #[derive(Clone)]
 #[allow(dead_code)]
-pub enum Failed<'a> {
+pub enum Failed<'a, A> {
     HitBottom(String),
     EndOfTrace,
-    Rejected(&'a str),
-    Both(Box<Failed<'a>>, Box<Failed<'a>>),
-    Left(Box<Failed<'a>>),
-    Right(Box<Failed<'a>>),
+    Rejected(&'a A),
+    Both(Box<Failed<'a, A>>, Box<Failed<'a, A>>),
+    Left(Box<Failed<'a, A>>),
+    Right(Box<Failed<'a, A>>),
 }
 
-impl<'a> fmt::Display for Failed<'a> {
+impl<'a, A: fmt::Display> fmt::Display for Failed<'a, A> {
     fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Failed::HitBottom(reason) => write!(dest, "HitBottom {}", reason),
@@ -111,13 +111,13 @@ impl<'a> fmt::Display for Failed<'a> {
     }
 }
 
-pub enum Result<'a> {
-    Failure(Failed<'a>),
-    Continue(Formula),
+pub enum Result<'a, A> {
+    Failure(Failed<'a, A>),
+    Continue(Formula<A>),
     Success,
 }
 
-impl<'a> fmt::Display for Result<'a> {
+impl<'a, A: fmt::Display> fmt::Display for Result<'a, A> {
     fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Result::Failure(f) => write!(dest, "Failure {}", f),
@@ -127,7 +127,7 @@ impl<'a> fmt::Display for Result<'a> {
     }
 }
 
-fn compile<'a>(l: Formula, mx: Option<&str>) -> Result<'a> {
+fn compile<'a, A: Copy>(l: Formula<A>, mx: Option<A>) -> Result<'a, A> {
     match &*l {
         LTL::Top => Result::Success,
         LTL::Bottom(s) => Result::Failure(Failed::HitBottom(s.to_string())),
@@ -183,7 +183,7 @@ fn compile<'a>(l: Formula, mx: Option<&str>) -> Result<'a> {
     }
 }
 
-pub fn step<'a>(m: Result<'a>, x: &str) -> Result<'a> {
+pub fn step<'a, A: Copy>(m: Result<'a, A>, x: A) -> Result<'a, A> {
     match m {
         Result::Continue(l) => compile(Rc::clone(&l), Some(x)),
         r => r,
@@ -191,7 +191,7 @@ pub fn step<'a>(m: Result<'a>, x: &str) -> Result<'a> {
 }
 
 #[allow(dead_code)]
-pub fn run<'a>(m: Formula, xs: &[&str]) -> Result<'a> {
+pub fn run<'a, A: Copy>(m: Formula<A>, xs: &[A]) -> Result<'a, A> {
     if xs.len() == 0 {
         compile(m, None)
     } else {
