@@ -48,8 +48,8 @@ rustPlatform.buildRustPackage rec {
 
   src = ./.;
 
-  cargoSha256 = "0jacm96l1gw9nxwavqi1x4669cg6lzy9hr18zjpwlcyb3qkw9z7f";
-
+  cargoSha256 = "13wjwicd1xrhzhrdx89r5ghz74la4m1jx5s74zwifmc57lq5y57k";
+  cargoSha256Version = 2;
   cargoBuildFlags = [];
 
   nativeBuildInputs = [ asciidoc asciidoctor plantuml docbook_xsl libxslt ];

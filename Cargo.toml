@@ -5,3 +5,5 @@ authors = ["John Wiegley <johnw@newartisans.com>"]
 edition = "2018"
 
 [dependencies]
+regex = "1.1.6"
+chrono = "0.4.6"
