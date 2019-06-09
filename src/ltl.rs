@@ -31,8 +31,12 @@ pub fn bottom(reason: String) -> Formula {
     Rc::new(LTL::Bottom(reason))
 }
 
+pub fn accept(f: Box<dyn Fn(&str) -> Rc<LTL>>) -> Formula {
+    Rc::new(LTL::Accept(f))
+}
+
 pub fn with<T>(f: &'static T) -> Formula where T: Fn(&str) -> Formula {
-    Rc::new(LTL::Accept(Box::new(f)))
+    accept(Box::new(f))
 }
 
 pub fn and(p: Formula, q: Formula) -> Formula {
