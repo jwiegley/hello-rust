@@ -53,7 +53,7 @@ rustPlatform.buildRustPackage rec {
   cargoBuildFlags = [];
 
   nativeBuildInputs = [ asciidoc asciidoctor plantuml docbook_xsl libxslt ];
-  buildInputs = [ cargo rustfmt ]
+  buildInputs = [ cargo rustfmt carnix rustup ]
     ++ (stdenv.lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security);
 
   preFixup = ''
