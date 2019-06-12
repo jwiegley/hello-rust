@@ -35,7 +35,10 @@ pub fn accept<A>(f: Box<dyn Fn(A) -> Rc<LTL<A>>>) -> Formula<A> {
     Rc::new(LTL::Accept(f))
 }
 
-pub fn with<A, T>(f: &'static T) -> Formula<A> where T: Fn(A) -> Formula<A> {
+pub fn with<A, T>(f: &'static T) -> Formula<A>
+where
+    T: Fn(A) -> Formula<A>,
+{
     accept(Box::new(f))
 }
 
@@ -75,18 +78,28 @@ pub fn always<A>(p: Formula<A>) -> Formula<A> {
 /// True if the given Haskell boolean is true.
 #[allow(dead_code)]
 pub fn truth<A>(b: bool) -> Formula<A> {
-    if b { top() } else { bottom("truth".to_string()) }
+    if b {
+        top()
+    } else {
+        bottom("truth".to_string())
+    }
 }
 
 /// True if the given predicate on the input is true.
 #[allow(dead_code)]
-pub fn is<A: 'static, T>(f: &'static T) -> Formula<A> where T: Fn(A) -> bool {
+pub fn is<A: 'static, T>(f: &'static T) -> Formula<A>
+where
+    T: Fn(A) -> bool,
+{
     accept(Box::new(move |x: A| truth(f(x))))
 }
 
 /// Another name for 'is'.
 #[allow(dead_code)]
-pub fn test<A: 'static, T>(f: &'static T) -> Formula<A> where T: Fn(A) -> bool {
+pub fn test<A: 'static, T>(f: &'static T) -> Formula<A>
+where
+    T: Fn(A) -> bool,
+{
     is(f)
 }
 
@@ -111,23 +124,21 @@ impl<A> fmt::Display for LTL<A> {
     }
 }
 
-#[derive(Clone)]
 #[allow(dead_code)]
-pub enum Failed<'a, A> {
+#[derive(Clone)]
+pub enum Failed {
     HitBottom(String),
     EndOfTrace,
-    Rejected(&'a A),
-    Both(Box<Failed<'a, A>>, Box<Failed<'a, A>>),
-    Left(Box<Failed<'a, A>>),
-    Right(Box<Failed<'a, A>>),
+    Both(Box<Failed>, Box<Failed>),
+    Left(Box<Failed>),
+    Right(Box<Failed>),
 }
 
-impl<'a, A: fmt::Display> fmt::Display for Failed<'a, A> {
+impl fmt::Display for Failed {
     fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Failed::HitBottom(reason) => write!(dest, "HitBottom {}", reason),
             Failed::EndOfTrace => write!(dest, "EndOfTrace"),
-            Failed::Rejected(reason) => write!(dest, "Rejected {}", reason),
             Failed::Both(p, q) => write!(dest, "(Both {} {})", p, q),
             Failed::Left(p) => write!(dest, "(Left {})", p),
             Failed::Right(q) => write!(dest, "(Right {})", q),
@@ -135,13 +146,13 @@ impl<'a, A: fmt::Display> fmt::Display for Failed<'a, A> {
     }
 }
 
-pub enum Result<'a, A> {
-    Failure(Failed<'a, A>),
+pub enum Result<A> {
+    Failure(Failed),
     Continue(Formula<A>),
     Success,
 }
 
-impl<'a, A: fmt::Display> fmt::Display for Result<'a, A> {
+impl<A: fmt::Display> fmt::Display for Result<A> {
     fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Result::Failure(f) => write!(dest, "Failure {}", f),
@@ -151,10 +162,10 @@ impl<'a, A: fmt::Display> fmt::Display for Result<'a, A> {
     }
 }
 
-fn compile<'a, A: Copy>(l: Formula<A>, mx: Option<A>) -> Result<'a, A> {
+fn compile<A: Copy>(l: Formula<A>, mx: Option<A>) -> Result<A> {
     match &*l {
         LTL::Top => Result::Success,
-        LTL::Bottom(s) => Result::Failure(Failed::HitBottom(s.to_string())),
+        LTL::Bottom(s) => Result::Failure(Failed::HitBottom(s.clone())),
 
         LTL::Accept(v) => match mx {
             None => Result::Success,
@@ -191,31 +202,25 @@ fn compile<'a, A: Copy>(l: Formula<A>, mx: Option<A>) -> Result<'a, A> {
 
         LTL::Until(p, q) => match mx {
             None => compile(Rc::clone(q), mx),
-            Some(_) => compile(
-                or(Rc::clone(q), and(Rc::clone(p), next(l))),
-                mx,
-            ),
+            Some(_) => compile(or(Rc::clone(q), and(Rc::clone(p), next(l))), mx),
         },
 
         LTL::Release(p, q) => match mx {
             None => compile(Rc::clone(q), mx),
-            Some(_) => compile(
-                and(Rc::clone(q), and(Rc::clone(p), next(l))),
-                mx,
-            ),
+            Some(_) => compile(and(Rc::clone(q), and(Rc::clone(p), next(l))), mx),
         },
     }
 }
 
-pub fn step<'a, A: Copy>(m: Result<'a, A>, x: A) -> Result<'a, A> {
+pub fn step<A: Copy>(m: Result<A>, x: A) -> Result<A> {
     match m {
-        Result::Continue(l) => compile(Rc::clone(&l), Some(x)),
+        Result::Continue(l) => compile(l, Some(x)),
         r => r,
     }
 }
 
 #[allow(dead_code)]
-pub fn run<'a, A: Copy>(m: Formula<A>, xs: &[A]) -> Result<'a, A> {
+pub fn run<A: Copy>(m: Formula<A>, xs: &[A]) -> Result<A> {
     if xs.len() == 0 {
         compile(m, None)
     } else {

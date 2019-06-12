@@ -178,7 +178,7 @@ fn speed_test() {
     let formula1 = always(or(is(&odd), and(is(&even), next(is(&odd)))));
     let formula2 = always(until(is(&odd), is(&even)));
 
-    fn run_it(f: Formula<u64>, n: u64) -> Result<'static, u64> {
+    fn run_it(f: Formula<u64>, n: u64) -> Result<u64> {
         let mut s = Result::Continue(f);
         for i in 1..n {
             s = ltl::step(s, i)
